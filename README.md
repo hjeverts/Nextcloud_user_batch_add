@@ -37,6 +37,8 @@ Then open **http://localhost:8050** in your browser.
 | `SMTP_USER` | SMTP login username (leave blank if no auth) |
 | `SMTP_PASSWORD` | SMTP login password |
 | `SMTP_FROM` | From address for outgoing e-mails |
+| `HOST` | Interface to bind to (default `127.0.0.1`; use `0.0.0.0` for LAN access) |
+| `PORT` | Port to listen on (default `8050`) |
 
 All settings can also be entered directly in the browser UI.
 

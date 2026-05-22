@@ -6,6 +6,8 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+_SMTP_TIMEOUT = 30  # seconds
+
 
 def send_welcome_email(
     smtp_host: str,
@@ -82,18 +84,36 @@ def send_welcome_email(
 
     try:
         if use_starttls:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=_SMTP_TIMEOUT)
             server.ehlo()
             server.starttls()
             server.ehlo()
         else:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=_SMTP_TIMEOUT)
+    except (ConnectionRefusedError, OSError, smtplib.SMTPConnectError) as exc:
+        return {
+            "success": False,
+            "message": f"SMTP connection failed ({smtp_host}:{smtp_port}): {exc}",
+        }
 
+    try:
         if smtp_user and smtp_password:
             server.login(smtp_user, smtp_password)
+    except smtplib.SMTPAuthenticationError as exc:
+        server.quit()
+        return {
+            "success": False,
+            "message": f"SMTP authentication rejected for '{smtp_user}': {exc}",
+        }
 
+    try:
         server.sendmail(from_email, [to_email], msg.as_string())
         server.quit()
         return {"success": True, "message": f"Email sent to {to_email}"}
-    except Exception as exc:  # noqa: BLE001
-        return {"success": False, "message": str(exc)}
+    except smtplib.SMTPRecipientsRefused as exc:
+        return {
+            "success": False,
+            "message": f"Recipient address rejected by server ({to_email}): {exc}",
+        }
+    except smtplib.SMTPException as exc:
+        return {"success": False, "message": f"Email send failed: {exc}"}

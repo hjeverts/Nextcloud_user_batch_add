@@ -18,7 +18,10 @@ import base64
 import io
 import os
 import secrets
+import smtplib
 import string
+
+import requests
 
 import dash_bootstrap_components as dbc
 import pandas as pd
@@ -54,22 +57,17 @@ def generate_password(length: int = 16) -> str:
     """Return a cryptographically secure random password.
 
     Guarantees at least one uppercase letter, one lowercase letter, one digit,
-    and one special character.
+    and one special character from ``_SPECIAL``.
     """
     alphabet = string.ascii_letters + string.digits + _SPECIAL
-    while True:
-        pwd = [
-            secrets.choice(string.ascii_uppercase),
-            secrets.choice(string.ascii_lowercase),
-            secrets.choice(string.digits),
-            secrets.choice(_SPECIAL),
-        ] + [secrets.choice(alphabet) for _ in range(length - 4)]
-        secrets.SystemRandom().shuffle(pwd)
-        candidate = "".join(pwd)
-        # Extra check: reject passwords that contain common problematic chars
-        # that may break shell / CSV display; redo if unlucky.
-        if len(candidate) == length:
-            return candidate
+    pwd = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+        secrets.choice(_SPECIAL),
+    ] + [secrets.choice(alphabet) for _ in range(length - 4)]
+    secrets.SystemRandom().shuffle(pwd)
+    return "".join(pwd)
 
 
 def parse_csv(contents: str, filename: str):
@@ -79,8 +77,13 @@ def parse_csv(contents: str, filename: str):
 
     try:
         df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
-    except Exception as exc:  # noqa: BLE001
-        return None, f"Could not parse file: {exc}"
+    except UnicodeDecodeError:
+        return None, (
+            "File encoding error: the CSV must be UTF-8 encoded. "
+            "Please re-save the file as UTF-8 and try again."
+        )
+    except (pd.errors.ParserError, ValueError) as exc:
+        return None, f"Could not parse CSV file: {exc}"
 
     # Normalise column names
     df.columns = df.columns.str.strip().str.lower()
@@ -606,11 +609,18 @@ def process_users(
                 email,
                 groups if groups else None,
             )
+        except requests.exceptions.RequestException as exc:
+            entry["Status"] = "✗ Error"
+            notes.append(f"User creation failed (network/API error): {exc}")
+            entry["Details"] = " | ".join(notes)
+            results.append(entry)
+            continue
 
-            if nc_result["statuscode"] == 100:
-                entry["Status"] = "✓ Created"
+        if nc_result["statuscode"] == 100:
+            entry["Status"] = "✓ Created"
 
-                # 2. Force password change on next login
+            # 2. Force password change on next login
+            try:
                 pwd_result = force_password_change(
                     nc_url, nc_admin_user, nc_admin_pass, username
                 )
@@ -618,11 +628,16 @@ def process_users(
                     notes.append("Password change required on first login")
                 else:
                     notes.append(
-                        f"Password-change flag: {pwd_result['message'] or 'unsupported'}"
+                        "Password-change flag could not be set"
+                        f" (OCS {pwd_result['statuscode']}:"
+                        f" {pwd_result['message'] or 'no message'})"
                     )
+            except requests.exceptions.RequestException as exc:
+                notes.append(f"Password-change flag error: {exc}")
 
-                # 3. Send welcome email
-                if email_enabled and email:
+            # 3. Send welcome email
+            if email_enabled and email:
+                try:
                     mail_result = send_welcome_email(
                         smtp_host,
                         smtp_port_int,
@@ -637,23 +652,22 @@ def process_users(
                         display_name,
                     )
                     notes.append(
-                        "Email sent" if mail_result["success"]
+                        "Email sent"
+                        if mail_result["success"]
                         else f"Email failed: {mail_result['message']}"
                     )
-                elif not email_enabled:
-                    notes.append("Email skipped (SMTP not configured)")
-                else:
-                    notes.append("Email skipped (no address)")
-
+                except (smtplib.SMTPException, OSError) as exc:
+                    notes.append(f"Email error: {exc}")
+            elif not email_enabled:
+                notes.append("Email skipped (SMTP not configured)")
             else:
-                entry["Status"] = "✗ Failed"
-                notes.append(
-                    nc_result.get("message") or f"OCS code {nc_result['statuscode']}"
-                )
+                notes.append("Email skipped (no address)")
 
-        except Exception as exc:  # noqa: BLE001
-            entry["Status"] = "✗ Error"
-            notes.append(str(exc))
+        else:
+            entry["Status"] = "✗ Failed"
+            notes.append(
+                nc_result.get("message") or f"OCS code {nc_result['statuscode']}"
+            )
 
         entry["Details"] = " | ".join(notes)
         results.append(entry)
@@ -720,4 +734,6 @@ def process_users(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(debug=False, host="0.0.0.0", port=8050)
+    host = os.getenv("HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "8050"))
+    app.run(debug=False, host=host, port=port)

@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 import requests
 
+_REQUEST_TIMEOUT = 30  # seconds
+
 
 def _parse_ocs_response(response: requests.Response) -> dict:
     """Parse the XML body of an OCS API response into a dict."""
@@ -23,11 +25,20 @@ def _parse_ocs_response(response: requests.Response) -> dict:
             "statuscode": int(statuscode_text),
             "message": message,
         }
-    except Exception as exc:  # noqa: BLE001
+    except ET.ParseError as exc:
         return {
             "status": "error",
             "statuscode": -1,
-            "message": str(exc),
+            "message": (
+                f"XML parsing failed (HTTP {response.status_code}): {exc}. "
+                f"Response preview: {response.text[:200]!r}"
+            ),
+        }
+    except (ValueError, KeyError) as exc:
+        return {
+            "status": "error",
+            "statuscode": -1,
+            "message": f"Unexpected OCS response structure: {exc}",
         }
 
 
@@ -67,7 +78,7 @@ def create_nextcloud_user(
         auth=(admin_user, admin_password),
         data=data,
         headers=headers,
-        timeout=30,
+        timeout=_REQUEST_TIMEOUT,
     )
     return _parse_ocs_response(response)
 
@@ -96,6 +107,6 @@ def force_password_change(
         auth=(admin_user, admin_password),
         data=data,
         headers=headers,
-        timeout=30,
+        timeout=_REQUEST_TIMEOUT,
     )
     return _parse_ocs_response(response)

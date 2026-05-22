@@ -53,7 +53,7 @@ def send_welcome_email(
         f"  Server:   {nextcloud_url}\n"
         f"  Username: {username}\n"
         f"  Password: {password}\n\n"
-        "IMPORTANT: You will be required to change your password on first login.\n\n"
+        "IMPORTANT: It is recommended to change your password on first login.\n\n"
         "Please keep your credentials safe and do not share them with anyone.\n\n"
         "Best regards,\n"
         "Nextcloud Administrator"
@@ -83,7 +83,7 @@ def send_welcome_email(
     </tr>
   </table>
   <p style="color: #c0392b; font-weight: bold;">
-    &#9888; You will be required to change your password on first login.
+    &#9888; It is recommended to change your password on first login.
   </p>
   <p>Please keep your credentials safe and do not share them with anyone.</p>
   <br>

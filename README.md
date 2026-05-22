@@ -5,7 +5,6 @@ once from a CSV file.  For every user it will:
 
 - **Generate** a cryptographically-secure random password
 - **Create** the account via the Nextcloud OCS Provisioning API
-- **Request** a password change on first login (`nextLoginPasswordChange`; support depends on your Nextcloud setup)
 - **Send** a welcome e-mail with the login credentials via SMTP
 
 ## Quick start
@@ -62,7 +61,7 @@ downloaded directly from the web UI.
 
 ```
 app.py               Main Dash application
-nextcloud.py         Nextcloud OCS API wrapper (create user, force password change)
+nextcloud.py         Nextcloud OCS API wrapper
 email_utils.py       SMTP e-mail helper
 requirements.txt     Python dependencies
 .env.example         Configuration template

@@ -33,12 +33,16 @@ Then open **http://localhost:8050** in your browser.
 | `NC_ADMIN_PASS` | Nextcloud admin password |
 | `SMTP_HOST` | SMTP server hostname |
 | `SMTP_PORT` | SMTP port (default `587`) |
-| `SMTP_USE_TLS` | `true` to use STARTTLS, `false` for SSL/TLS (default `true`) |
+| `SMTP_SECURITY` | SMTP security mode: `auto`, `starttls`, or `ssl` (default `auto`) |
 | `SMTP_USER` | SMTP login username (leave blank if no auth) |
 | `SMTP_PASSWORD` | SMTP login password |
 | `SMTP_FROM` | From address for outgoing e-mails |
 | `HOST` | Interface to bind to (default `127.0.0.1`; use `0.0.0.0` for LAN access) |
 | `PORT` | Port to listen on (default `8050`) |
+
+If `SMTP_SECURITY=auto`, the app uses SSL/TLS for port `465` and STARTTLS for
+other ports. Legacy `SMTP_USE_TLS` values are still supported for backwards
+compatibility.
 
 All settings can also be entered directly in the browser UI.
 

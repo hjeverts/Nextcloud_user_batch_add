@@ -54,6 +54,19 @@ app.title = "Nextcloud User Batch Add"
 _SPECIAL = "!@#$%^&*()"
 
 
+def _default_smtp_security_mode() -> str:
+    """Resolve the default SMTP security mode from the environment."""
+    smtp_security = os.getenv("SMTP_SECURITY", "").strip().lower()
+    if smtp_security in {"auto", "starttls", "ssl"}:
+        return smtp_security
+
+    smtp_use_tls = os.getenv("SMTP_USE_TLS", "").strip().lower()
+    if smtp_use_tls:
+        return "starttls" if smtp_use_tls != "false" else "ssl"
+
+    return "auto"
+
+
 def generate_password(length: int = 16) -> str:
     """Return a cryptographically secure random password.
 
@@ -200,23 +213,14 @@ def _config_card() -> dbc.Card:
                                     dbc.Col(
                                         [
                                             dbc.Label("Security"),
-                                            dbc.Checklist(
-                                                id="smtp-tls",
+                                            dbc.Select(
+                                                id="smtp-security",
                                                 options=[
-                                                    {
-                                                        "label": "STARTTLS",
-                                                        "value": "starttls",
-                                                    }
+                                                    {"label": "Automatic", "value": "auto"},
+                                                    {"label": "STARTTLS", "value": "starttls"},
+                                                    {"label": "SSL/TLS", "value": "ssl"},
                                                 ],
-                                                value=(
-                                                    ["starttls"]
-                                                    if os.getenv(
-                                                        "SMTP_USE_TLS", "true"
-                                                    ).lower()
-                                                    != "false"
-                                                    else []
-                                                ),
-                                                switch=True,
+                                                value=_default_smtp_security_mode(),
                                             ),
                                         ],
                                         md=2,
@@ -526,7 +530,7 @@ def handle_upload(contents, filename):
     # SMTP config
     State("smtp-host", "value"),
     State("smtp-port", "value"),
-    State("smtp-tls", "value"),
+    State("smtp-security", "value"),
     State("smtp-user", "value"),
     State("smtp-password", "value"),
     State("smtp-from", "value"),
@@ -540,7 +544,7 @@ def process_users(
     nc_admin_pass,
     smtp_host,
     smtp_port,
-    smtp_tls,
+    smtp_security,
     smtp_user,
     smtp_password,
     smtp_from,
@@ -567,7 +571,7 @@ def process_users(
         )
 
     smtp_port_int = int(smtp_port) if smtp_port else 587
-    use_starttls = bool(smtp_tls and "starttls" in smtp_tls)
+    smtp_security_mode = (smtp_security or "auto").strip().lower()
     email_enabled = bool(smtp_host and smtp_from)
 
     results: list[dict] = []
@@ -630,7 +634,7 @@ def process_users(
                 pwd_result = force_password_change(
                     nc_url, nc_admin_user, nc_admin_pass, username
                 )
-                if pwd_result["statuscode"] == 100:
+                if pwd_result["statuscode"] in {100, 113}:
                     notes.append("Password change required on first login")
                 else:
                     notes.append(
@@ -649,7 +653,7 @@ def process_users(
                         smtp_port_int,
                         smtp_user or "",
                         smtp_password or "",
-                        use_starttls,
+                        smtp_security_mode,
                         smtp_from,
                         email,
                         username,

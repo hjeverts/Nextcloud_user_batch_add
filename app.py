@@ -2,8 +2,8 @@
 app.py — Nextcloud User Batch Add
 
 A Dash web application that reads a CSV of users, creates their accounts on a
-Nextcloud server via the OCS Provisioning API, forces a password-change on
-first login, and e-mails each user their generated credentials.
+Nextcloud server via the OCS Provisioning API, and e-mails each user their
+generated credentials.
 
 Usage
 -----
@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 import dash
 
 from email_utils import send_welcome_email
-from nextcloud import create_nextcloud_user, force_password_change
+from nextcloud import create_nextcloud_user
 
 load_dotenv()
 
@@ -549,7 +549,7 @@ def process_users(
     smtp_password,
     smtp_from,
 ):
-    """Create each user in Nextcloud, force password change, and send email."""
+    """Create each user in Nextcloud and send email."""
     if not n_clicks or not table_data:
         return "", ""
 
@@ -629,29 +629,7 @@ def process_users(
         if nc_result["statuscode"] == 100:
             entry["Status"] = "✓ Created"
 
-            # 2. Force password change on next login
-            try:
-                pwd_result = force_password_change(
-                    nc_url, nc_admin_user, nc_admin_pass, username
-                )
-                if pwd_result["statuscode"] == 100:
-                    notes.append("Password-change request accepted by API")
-                elif pwd_result["statuscode"] == 113:
-                    notes.append(
-                        "Password-change request not confirmed"
-                        f" (OCS {pwd_result['statuscode']}:"
-                        f" {pwd_result['message'] or 'no message'})"
-                    )
-                else:
-                    notes.append(
-                        "Password-change flag could not be set"
-                        f" (OCS {pwd_result['statuscode']}:"
-                        f" {pwd_result['message'] or 'no message'})"
-                    )
-            except requests.exceptions.RequestException as exc:
-                notes.append(f"Password-change flag error: {exc}")
-
-            # 3. Send welcome email
+            # 2. Send welcome email
             if email_enabled and email:
                 try:
                     mail_result = send_welcome_email(

@@ -23,9 +23,10 @@ import string
 
 import requests
 
+import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
 import pandas as pd
-from dash import Input, Output, State, callback, dash_table, dcc, html
+from dash import Input, Output, State, callback, dcc, html
 from dotenv import load_dotenv
 
 import dash
@@ -452,19 +453,24 @@ def handle_upload(contents, filename):
             ),
             dbc.CardBody(
                 [
-                    dash_table.DataTable(
+                    dag.AgGrid(
                         id="preview-table",
-                        data=df.to_dict("records"),
-                        columns=[
-                            {"name": c.title(), "id": c} for c in df.columns
+                        rowData=df.to_dict("records"),
+                        columnDefs=[
+                            {"headerName": c.title(), "field": c}
+                            for c in df.columns
                         ],
-                        style_table={"overflowX": "auto"},
-                        style_cell={"textAlign": "left", "padding": "8px"},
-                        style_header={
-                            "backgroundColor": "#e9ecef",
-                            "fontWeight": "bold",
+                        defaultColDef={
+                            "resizable": True,
+                            "sortable": True,
+                            "filter": True,
                         },
-                        page_size=10,
+                        dashGridOptions={
+                            "pagination": True,
+                            "paginationPageSize": 10,
+                            "paginationPageSizeSelector": [10, 25, 50],
+                        },
+                        style={"height": "350px"},
                     ),
                     html.Hr(),
                     dbc.Row(
@@ -512,7 +518,7 @@ def handle_upload(contents, filename):
     Output("spinner-placeholder", "children"),
     Input("create-btn", "n_clicks"),
     # CSV data reconstructed from the preview table
-    State("preview-table", "data"),
+    State("preview-table", "rowData"),
     # Nextcloud config
     State("nc-url", "value"),
     State("nc-admin-user", "value"),
@@ -691,38 +697,47 @@ def process_users(
             ],
             color=summary_color,
         ),
-        dash_table.DataTable(
-            data=results_df.to_dict("records"),
-            columns=[{"name": c, "id": c} for c in results_df.columns],
-            style_table={"overflowX": "auto"},
-            style_cell={
-                "textAlign": "left",
-                "padding": "8px",
-                "whiteSpace": "normal",
-                "height": "auto",
-            },
-            style_header={
-                "backgroundColor": "#e9ecef",
-                "fontWeight": "bold",
-            },
-            style_data_conditional=[
-                {
-                    "if": {"filter_query": '{Status} contains "✓"'},
-                    "backgroundColor": "#d4edda",
-                    "color": "#155724",
-                },
-                {
-                    "if": {"filter_query": '{Status} contains "✗"'},
-                    "backgroundColor": "#f8d7da",
-                    "color": "#721c24",
-                },
-                {
-                    "if": {"filter_query": '{Status} contains "⚠"'},
-                    "backgroundColor": "#fff3cd",
-                    "color": "#856404",
-                },
+        dag.AgGrid(
+            rowData=results_df.to_dict("records"),
+            columnDefs=[
+                {"headerName": c, "field": c} for c in results_df.columns
             ],
-            page_size=20,
+            defaultColDef={
+                "resizable": True,
+                "wrapText": True,
+                "autoHeight": True,
+            },
+            dashGridOptions={
+                "pagination": True,
+                "paginationPageSize": 20,
+                "paginationPageSizeSelector": [20, 50, 100],
+            },
+            getRowStyle={
+                "styleConditions": [
+                    {
+                        "condition": "params.data.Status.includes('✓')",
+                        "style": {
+                            "backgroundColor": "#d4edda",
+                            "color": "#155724",
+                        },
+                    },
+                    {
+                        "condition": "params.data.Status.includes('✗')",
+                        "style": {
+                            "backgroundColor": "#f8d7da",
+                            "color": "#721c24",
+                        },
+                    },
+                    {
+                        "condition": "params.data.Status.includes('⚠')",
+                        "style": {
+                            "backgroundColor": "#fff3cd",
+                            "color": "#856404",
+                        },
+                    },
+                ]
+            },
+            style={"height": "500px"},
         ),
     ]
 

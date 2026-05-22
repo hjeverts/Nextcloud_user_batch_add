@@ -3,7 +3,7 @@ nextcloud.py — Nextcloud OCS Provisioning API wrapper.
 
 Supported operations:
 - create_nextcloud_user  : create a new user account
-- force_password_change  : require the user to change password on next login
+- force_password_change  : request password change on next login
 """
 
 import xml.etree.ElementTree as ET
@@ -89,9 +89,9 @@ def force_password_change(
     admin_password: str,
     username: str,
 ) -> dict:
-    """Require *username* to change their password on the next login.
+    """Request that *username* changes their password on the next login.
 
-    Uses the ``nextLoginPasswordChange`` key introduced in Nextcloud 21.
+    Uses the ``nextLoginPasswordChange`` key.
     Returns a dict with keys ``status``, ``statuscode``, and ``message``.
     """
     url = f"{nextcloud_url.rstrip('/')}/ocs/v1.php/cloud/users/{username}"

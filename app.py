@@ -634,8 +634,14 @@ def process_users(
                 pwd_result = force_password_change(
                     nc_url, nc_admin_user, nc_admin_pass, username
                 )
-                if pwd_result["statuscode"] in {100, 113}:
-                    notes.append("Password change required on first login")
+                if pwd_result["statuscode"] == 100:
+                    notes.append("Password-change request accepted by API")
+                elif pwd_result["statuscode"] == 113:
+                    notes.append(
+                        "Password-change request not confirmed"
+                        f" (OCS {pwd_result['statuscode']}:"
+                        f" {pwd_result['message'] or 'no message'})"
+                    )
                 else:
                     notes.append(
                         "Password-change flag could not be set"

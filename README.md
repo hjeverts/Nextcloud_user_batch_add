@@ -5,7 +5,7 @@ once from a CSV file.  For every user it will:
 
 - **Generate** a cryptographically-secure random password
 - **Create** the account via the Nextcloud OCS Provisioning API
-- **Force** a password change on first login (`nextLoginPasswordChange`, Nextcloud 21+)
+- **Request** a password change on first login (`nextLoginPasswordChange`; support depends on your Nextcloud setup)
 - **Send** a welcome e-mail with the login credentials via SMTP
 
 ## Quick start

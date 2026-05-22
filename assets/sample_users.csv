@@ -1,0 +1,4 @@
+username,displayname,email,groups
+jdoe,John Doe,john.doe@example.com,staff;it
+asmith,Alice Smith,alice.smith@example.com,staff
+bjones,Bob Jones,bob.jones@example.com,
